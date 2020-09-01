@@ -6,6 +6,9 @@ interface IPlayerProps {
   isPlaying: boolean;
   play: () => any;
   pause: () => any;
+  previousTrack: () => any;
+  nextTrack: () => any;
+  seek: (time: number) => any;
 }
 
 interface IPlayerState {
@@ -79,8 +82,20 @@ class Player extends Component<IPlayerProps, IPlayerState> {
         <div>
           {this.state.progress}
         </div>
-        <button onClick={this.togglePlayback}>
+        <button disabled={!this.props.item} onClick={this.togglePlayback}>
           {this.props.isPlaying ? 'Pause' : 'Play'}
+        </button>
+        <button disabled={!this.props.item} onClick={this.props.previousTrack}>
+          {'<-'}
+        </button>
+        <button disabled={!this.props.item}  onClick={() => this.props.seek(-5)}>
+          {'<<'}
+        </button>
+        <button disabled={!this.props.item} onClick={() => this.props.seek(5)}>
+          {'>>'}
+        </button>
+        <button disabled={!this.props.item} onClick={this.props.nextTrack}>
+          {'->'}
         </button>
       </>
     )

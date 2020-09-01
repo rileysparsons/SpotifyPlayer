@@ -111,7 +111,7 @@ export default function withSpotifyWebPlayer(WrappedComponent: ReactType) {
     }
 
     initializeSpotify = (token: string) => {
-      console.log('INITIALIZE');
+
       this.player = new this.props.Spotify.Player({
         name: 'Web Playback SDK Quick Start Player',
         getOAuthToken: (cb: (token: string) => void) => { cb(token); }
@@ -127,11 +127,11 @@ export default function withSpotifyWebPlayer(WrappedComponent: ReactType) {
       this.player.addListener('playback_error', ({ message }: { message: string }) => { console.error(message); });
       // Playback status updates
       this.player.addListener('player_state_changed', (state?: WebPlaybackState) => {
-        console.log('STATE', state);
+
         if (state) {
           this.setState({
             item: state.track_window.current_track,
-            isPlaying: state.paused
+            isPlaying: !state.paused
           });
           if (!state.paused) {
               this.pollForTrack();
@@ -139,7 +139,7 @@ export default function withSpotifyWebPlayer(WrappedComponent: ReactType) {
             if (this.stopPolling) {
               this.stopPolling();
             }
-            this.getState();
+            setTimeout(() => this.getState);
           }
         } else {
           this.setState({
@@ -194,6 +194,7 @@ export default function withSpotifyWebPlayer(WrappedComponent: ReactType) {
           throw new Error(res.status);
         }
       }).then(data => {
+        console.log('data', data.progress_ms);
         this.setState(
           {
             item: data.item,
@@ -241,10 +242,33 @@ export default function withSpotifyWebPlayer(WrappedComponent: ReactType) {
       };
     }
 
+    previousTrack = () => {
+      return this.player.previousTrack();
+    }
+
+    nextTrack = () => {
+      return this.player.nextTrack();
+    }
+
+    seek = (time: number) => {
+      const seekTime = Math.min(Math.max(0, this.state.progressMs + (time * 1000)), this.state.item.duration_ms);
+      console.log('seek', seekTime);
+      return this.player.seek(seekTime)
+        .then(() => {
+            this.setState({
+              progressMs: seekTime
+            });
+        });
+    }
+
     render() {
+      console.log(this.state.progressMs);
       return <WrappedComponent
         play={this.play}
         pause={this.pause}
+        previousTrack={this.previousTrack}
+        nextTrack={this.nextTrack}
+        seek={this.seek}
         item={this.state.item}
         isPlaying={this.state.isPlaying}
         progressMs={this.state.progressMs}
