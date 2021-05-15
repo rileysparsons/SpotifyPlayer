@@ -1,4 +1,8 @@
 import React, { Component } from 'react';
+import {FullPlaylistObject} from './withSpotifyWebPlayer';
+import {Visualizer} from './Visualizer';
+
+import './Player.scss'
 
 interface IPlayerProps {
   item?: any;
@@ -9,6 +13,10 @@ interface IPlayerProps {
   previousTrack: () => any;
   nextTrack: () => any;
   seek: (time: number) => any;
+  channels: FullPlaylistObject[];
+  onChannelChange: (channel: number) => void;
+  analysis: any;
+  wave: any;
 }
 
 interface IPlayerState {
@@ -67,37 +75,52 @@ class Player extends Component<IPlayerProps, IPlayerState> {
     }
   }
 
+  convertSecondsToMinutes = (seconds: number) => {
+
+    const pad = (n: number, width: number, z = '0') => {
+      const _n =  n + '';
+      return _n.length >= width ? _n : new Array(width - _n.length + 1).join(z) + n;
+    }
+
+    return `${pad(Math.round(seconds / 60), 2)}:${pad(Math.round(seconds) % 60, 2)}`
+  }
+
   render () {
     return (
-      <>
-        <div>
+      <div className='player container'>
+        <Visualizer currentPosition={this.props.progressMs && this.props.progressMs / 1000} data={this.props.wave} size={[300,100]}></Visualizer>
+        <div className='select-wrapper'>
+          <span className='title'>{'Channel:'}</span>
+          <select onChange={(e) => this.props.onChannelChange(e.target.selectedIndex)}>
+            {
+              this.props.channels.map(({name, id}) => {
+                return <option key={id} value={id}>{name}</option>
+              })
+            }
+          </select>
+        </div>
+        <div className='time'>
+          {this.props.progressMs && this.props.item ? `${this.convertSecondsToMinutes(this.props.progressMs / 1000)} / ${this.convertSecondsToMinutes(this.props.item.duration_ms / 1000)}` : '.. / ..'}
+        </div>
+        <div className='title'>
           {this.props.item && this.props.item.name}
         </div>
-        <div>
+        <div className='artist'>
           {this.props.item && this.props.item.artists[0].name}
         </div>
         <div>
-          {this.props.progressMs && this.props.progressMs / 1000}
+          <button className='action' disabled={!this.props.item} onClick={this.props.previousTrack}>
+          </button>
+          <button className='action' disabled={!this.props.item}  onClick={() => this.props.seek(-5)}>
+          </button>
+          <button className='action' disabled={!this.props.item} onClick={this.togglePlayback}>
+          </button>
+          <button className='action' disabled={!this.props.item} onClick={() => this.props.seek(5)}>
+          </button>
+          <button className='action' disabled={!this.props.item} onClick={this.props.nextTrack}>
+          </button>
         </div>
-        <div>
-          {this.state.progress}
-        </div>
-        <button disabled={!this.props.item} onClick={this.togglePlayback}>
-          {this.props.isPlaying ? 'Pause' : 'Play'}
-        </button>
-        <button disabled={!this.props.item} onClick={this.props.previousTrack}>
-          {'<-'}
-        </button>
-        <button disabled={!this.props.item}  onClick={() => this.props.seek(-5)}>
-          {'<<'}
-        </button>
-        <button disabled={!this.props.item} onClick={() => this.props.seek(5)}>
-          {'>>'}
-        </button>
-        <button disabled={!this.props.item} onClick={this.props.nextTrack}>
-          {'->'}
-        </button>
-      </>
+      </div>
     )
   }
 }
