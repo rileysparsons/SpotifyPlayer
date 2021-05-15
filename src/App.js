@@ -1,10 +1,6 @@
-/* global Spotify */
 import React, { Component } from 'react';
-import logo from './logo.svg';
 import './App.css';
 import Player from './Player';
-import scriptLoader from 'react-async-script-loader';
-
 
 import { Route, Redirect, useParams } from "react-router-dom";
 import withSpotifyWebPlayer from './withSpotifyWebPlayer';
@@ -15,7 +11,10 @@ const redirectUri = 'http://localhost:3000/callback'; // Your redirect uri
 const scopes = 'user-read-private user-read-email user-read-playback-state streaming user-top-read';
 const state = '123';
 
-const PlayerWithSpotifyWebPlayer = withSpotifyWebPlayer(Player);
+const PlayerWithSpotifyWebPlayer = withSpotifyWebPlayer(Player, [
+  '37i9dQZF1DX00RdhV73Dbe',
+  '37i9dQZF1DWWBHeXOYZf74'
+]);
 
 class App extends Component {
 
@@ -78,95 +77,10 @@ class App extends Component {
       console.log('Currently Playing', current_track);
       console.log('Playing Next', next_track);
     });
-
-
-
-    // return fetch(
-    //   `https://api.spotify.com/v1/me/player`, {
-    //     method: 'GET',
-    //     headers: {
-    //       'Authorization': `Bearer ${this.state.access_token}`
-    //     },
-    //   }
-    // ).then((res) => {
-    //   if (res.ok) {
-    //     return res.json();
-    //   } else {
-    //     throw new Error(res.status);
-    //   }
-    // }).then(data => {
-    //   this.setState(
-    //     {
-    //       item: data.item,
-    //       isPlaying: data.is_playing,
-    //       progressMs: data.progress_ms
-    //     }
-    //   );
-    //   return data;
-    // }).then((data) => {
-    //   return fetch(
-    //     `https://api.spotify.com/v1/audio-analysis/${data.item.id}`, {
-    //       method: 'GET',
-    //       headers: {
-    //         'Authorization': `Bearer ${this.state.access_token}`
-    //       },
-    //     }
-    //   )
-    // }).then((res) => {
-    //   if (res.ok) {
-    //     return res.json();
-    //   } else {
-    //     throw new Error(res.status);
-    //   }
-    // }).then((data) => {
-    //   console.log(data);
-    // }).catch(e => {
-    //   if (e.message === '401') {
-    //     localStorage.removeItem('access_token');
-    //     this.setState({
-    //       access_token: undefined,
-    //       item: undefined,
-    //       isPlaying: false,
-    //       progressMs: 0
-    //     });
-    //     this.stopPolling();
-    //   }
-    // });
   }
 
   handleChange = (event) => {
     this.setState({trackId: event.target.value});
-  }
-
-  playTrack = (spotify_uri) => {
-    const play = ({
-      spotify_uri,
-      playerInstance: {
-        _options: {
-          getOAuthToken,
-          id
-        }
-      }
-    }) => {
-      getOAuthToken(access_token => {
-        this.setState({
-          access_token
-        });
-        fetch(`https://api.spotify.com/v1/me/player/play?device_id=${id}`, {
-          method: 'PUT',
-          body: JSON.stringify({ uris: [spotify_uri] }),
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${access_token}`
-          },
-        });
-      });
-    };
-
-    play({
-      playerInstance: this.player,
-      spotify_uri
-    });
   }
 
   buildAuthEndpoint() {
@@ -207,7 +121,7 @@ class App extends Component {
     }
 
     return (
-      <>
+      <div className='main center'>
         {!this.state.access_token &&
             <a
               className="btn btn--loginApp-link"
@@ -222,7 +136,7 @@ class App extends Component {
           />
         }
         <Route path='/callback' component={Callback}/>
-      </>
+      </div>
     );
   }
 }
