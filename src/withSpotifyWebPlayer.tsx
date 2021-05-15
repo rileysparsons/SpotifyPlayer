@@ -55,9 +55,121 @@ interface WebPlaybackState {
   };
 }
 
+export interface FullPlaylistObject {
+  collaborative: boolean;
+  description: string;
+  external_urls: {
+    spotify: string;
+  };
+  followers: {
+    href: null | string;
+    total: number;
+  };
+  href: null | string;
+  id: string;
+  images: {
+    url: string;
+  }[];
+  name: string;
+  owner: {
+    external_urls: {
+      spotify: string;
+    };
+    href: string;
+    id: string;
+    type: string;
+    uri: string;
+  };
+  public: null;
+  snapshot_id: string;
+  tracks: {
+    href: string;
+    items: {
+      added_at: string;
+      added_by: {
+        external_urls: {
+          spotify: string;
+        };
+        href: string;
+        id: string;
+        type: string;
+        uri: string;
+      };
+      is_local: boolean;
+      track: {
+        album: {
+          album_type: string;
+          available_markets: string;
+          external_urls: {
+            spotify: string;
+          };
+          href: string;
+          id: string;
+          images: {
+            height: number;
+            url: string;
+            width: number;
+          }[];
+          name: string;
+          type: string;
+          uri: string;
+        };
+        artists: {
+          external_urls: {
+            spotify: string;
+          };
+          href: string;
+          id: string;
+          name: string;
+          type: string;
+          uri: string;
+        }[];
+        available_markets: string[];
+        disc_number: number;
+        duration_ms: number;
+        explicit: boolean;
+        external_ids: {
+          isrc: string;
+        };
+        external_urls: {
+          spotify: string;
+        };
+        href: string;
+        id: string;
+        name: string;
+        popularity: number;
+        preview_url: string;
+        track_number: number;
+        type: string;
+        uri: string;
+      };
+    }[];
+    limit: number;
+    next: string;
+    offset: number;
+    previous: null;
+    total: number;
+  };
+  type: string;
+  url: string;
+}
+
+export interface SegmentObject {
+  start: number;
+  duration: number;
+  confidence: number;
+  loudness_start: number;
+  loudness_max_time: number;
+  loudness_max: number;
+  loudness_end: number;
+  pitches: number[];
+  timbre: number[];
+}
+
+
 const PROGRESS_INTERVAL = 300;
 
-export default function withSpotifyWebPlayer(WrappedComponent: ReactType) {
+export default function withSpotifyWebPlayer(WrappedComponent: ReactType, playlists: string[] = []) {
   class InnerComponent extends Component<any, any> {
 
     player?: any;
@@ -68,11 +180,20 @@ export default function withSpotifyWebPlayer(WrappedComponent: ReactType) {
       this.state = {
         item: null,
         progressMs: null,
-        isPlaying: false
-      }
+        isPlaying: false,
+        playlists: [],
+        currentPlaylist: 0,
+        loudnessWave: null
+      };
+
+      this.fetchPlaylistsMetadata(playlists).then((metadatas: any[]) => {
+          this.setState({
+            playlists: metadatas
+          });
+      });
     }
 
-    componentDidUpdate({ Spotify, access_token }: { Spotify: any, access_token: string }) {
+    componentDidUpdate({ Spotify, access_token }: { Spotify: any, access_token: string }, { currentPlaylist, item }: { currentPlaylist: number, item: FullPlaylistObject }) {
       if (!Spotify && this.props.Spotify) { // load finished
         if (this.props.access_token) {
           this.initializeSpotify(this.props.access_token);
@@ -82,6 +203,34 @@ export default function withSpotifyWebPlayer(WrappedComponent: ReactType) {
           this.initializeSpotify(this.props.access_token);
         }
       }
+
+      if (currentPlaylist !== this.state.currentPlaylist) {
+        this.playContext(this.state.playlists[this.state.currentPlaylist].id);
+      }
+
+      if (item == null && this.state.item || (item && item.id != this.state.item.id)) {
+        this.fetchTrackAnalysis(this.state.item.id).then(({segments}: {segments: SegmentObject[]}) => {
+          this.setState({
+            loudnessWave: this.getPitchesOverTime(segments)
+          })
+        });
+      }
+    }
+
+    getPitchesOverTime(segments: SegmentObject[]) {
+
+      const resampled: {[key: number]: number} = {};
+
+      segments.forEach(({start, duration, loudness_max}) => {
+        const roundedStart = Math.round(start);
+        const roundedEnd = Math.round(start + duration);
+        
+        for (let i = roundedStart; i < roundedEnd; i++) {
+          resampled[i] = loudness_max;
+        }
+      });
+
+      return resampled;
     }
 
     componentDidMount () {
@@ -129,6 +278,7 @@ export default function withSpotifyWebPlayer(WrappedComponent: ReactType) {
       this.player.addListener('player_state_changed', (state?: WebPlaybackState) => {
 
         if (state) {
+          console.log('changed', !state.paused);
           this.setState({
             item: state.track_window.current_track,
             isPlaying: !state.paused
@@ -159,9 +309,15 @@ export default function withSpotifyWebPlayer(WrappedComponent: ReactType) {
       // Ready
       this.player.addListener('ready', ({ device_id }: { device_id: string }) => {
         console.log('Ready with Device ID', device_id);
+        // This used to be done for free, but something changed
+        this.player._options = {
+          ...this.player._options,
+          id: device_id
+        }
         this.setState({
           isReady: true
         });
+        this.playContext(playlists[this.state.currentPlaylist]);
       });
 
       // Not Ready
@@ -179,6 +335,51 @@ export default function withSpotifyWebPlayer(WrappedComponent: ReactType) {
       this.player.connect();
     }
 
+
+    fetchPlaylistsMetadata = async (ids: string[]) => {
+      const metadatas: any[] = [];
+      for (let id of ids) {
+        await fetch(
+          `https://api.spotify.com/v1/playlists/${id}`, {
+            method: 'GET',
+            headers: {
+              'Authorization': `Bearer ${this.props.access_token}`
+            },
+          }
+        )
+        .then((res) => {
+          return res.json();
+        })
+        .then((metadata: FullPlaylistObject) => {
+          metadatas.push(metadata)
+        });
+      }
+      return metadatas;
+    }
+
+    fetchTrackAnalysis = (id: string) => {
+        return fetch(
+          `https://api.spotify.com/v1/audio-analysis/${id}`, {
+            method: 'GET',
+            headers: {
+              'Authorization': `Bearer ${this.state.access_token}`
+            },
+          }
+        ).then((res) => {
+        if (res.ok) {
+          return res.json();
+        } else {
+          throw new Error(res.status as any);
+        }
+      }).then((data) => {
+        return data;
+      }).catch(e => {
+        if (e.message === 401) {
+          this.props.onAuthError();
+        }
+      });
+    }
+
     getState = () => {
       return fetch(
         `https://api.spotify.com/v1/me/player`, {
@@ -194,7 +395,7 @@ export default function withSpotifyWebPlayer(WrappedComponent: ReactType) {
           throw new Error(res.status);
         }
       }).then(data => {
-        console.log('data', data.progress_ms);
+        console.log('data', data.is_playing);
         this.setState(
           {
             item: data.item,
@@ -203,8 +404,8 @@ export default function withSpotifyWebPlayer(WrappedComponent: ReactType) {
           }
         );
         return data;
-      }).catch((code) => {
-        if (code === 401) {
+      }).catch((error) => {
+        if (error.message === 401) {
           this.props.onAuthError();
         }
       })
@@ -261,8 +462,52 @@ export default function withSpotifyWebPlayer(WrappedComponent: ReactType) {
         });
     }
 
+    playContext = (spotify_uri: string) => {
+        const play = ({
+          spotify_uri,
+          playerInstance: {
+            _options: {
+              getOAuthToken,
+              id
+            }
+          }
+        }: {
+          spotify_uri: string,
+          playerInstance: {
+            _options: {
+              getOAuthToken: any,
+              id: string
+            }
+          }
+        }) => {
+          getOAuthToken((access_token: string) => {
+            this.setState({
+              access_token
+            });
+            fetch(`https://api.spotify.com/v1/me/player/play?device_id=${id}`, {
+              method: 'PUT',
+              body: JSON.stringify({ context_uri: `spotify:playlist:${spotify_uri}` }),
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${access_token}`
+              },
+            });
+          });
+        };
+        console.log(this.player);
+        play({
+          playerInstance: this.player,
+          spotify_uri
+        });
+    }
+
+    onPlaylistChange = (currentPlaylist: number) => {
+      this.setState({
+        currentPlaylist
+      });
+    }
+
     render() {
-      console.log(this.state.progressMs);
       return <WrappedComponent
         play={this.play}
         pause={this.pause}
@@ -272,6 +517,10 @@ export default function withSpotifyWebPlayer(WrappedComponent: ReactType) {
         item={this.state.item}
         isPlaying={this.state.isPlaying}
         progressMs={this.state.progressMs}
+        channels={this.state.playlists}
+        currentChannel={this.state.currentPlaylist}
+        onChannelChange={this.onPlaylistChange}
+        wave={this.state.loudnessWave}
       />
     }
 
