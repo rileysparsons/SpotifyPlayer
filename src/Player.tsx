@@ -88,7 +88,11 @@ class Player extends Component<IPlayerProps, IPlayerState> {
   render () {
     return (
       <div className='player container'>
-        <Visualizer currentPosition={this.props.progressMs && this.props.progressMs / 1000} data={this.props.wave} size={[300,100]}></Visualizer>
+        <Visualizer 
+          currentPosition={this.props.progressMs && this.props.progressMs / 1000} 
+          data={this.props.wave} 
+          size={[300,100]}>
+        </Visualizer>
         <div className='select-wrapper'>
           <span className='title'>{'Channel:'}</span>
           <select onChange={(e) => this.props.onChannelChange(e.target.selectedIndex)}>
