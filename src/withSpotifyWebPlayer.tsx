@@ -395,7 +395,6 @@ export default function withSpotifyWebPlayer(WrappedComponent: ReactType, playli
           throw new Error(res.status);
         }
       }).then(data => {
-        console.log('data', data.is_playing);
         this.setState(
           {
             item: data.item,
@@ -454,12 +453,7 @@ export default function withSpotifyWebPlayer(WrappedComponent: ReactType, playli
     seek = (time: number) => {
       const seekTime = Math.min(Math.max(0, this.state.progressMs + (time * 1000)), this.state.item.duration_ms);
       console.log('seek', seekTime);
-      return this.player.seek(seekTime)
-        .then(() => {
-            this.setState({
-              progressMs: seekTime
-            });
-        });
+      return this.player.seek(seekTime);
     }
 
     playContext = (spotify_uri: string) => {
