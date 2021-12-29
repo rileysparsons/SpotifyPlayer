@@ -3,6 +3,7 @@ import {FullPlaylistObject} from './withSpotifyWebPlayer';
 import {Visualizer} from './Visualizer';
 
 import './Player.scss'
+import { Marquee } from './Marquee';
 
 interface IPlayerProps {
   item?: any;
@@ -28,12 +29,14 @@ const PROGRESS_INTERVAL = 300;
 class Player extends Component<IPlayerProps, IPlayerState> {
 
   fakeProgressInterval?: NodeJS.Timeout = undefined;
+  titleRef: React.RefObject<unknown>;
 
   constructor(props: IPlayerProps) {
     super(props);
     this.state = {
       progress: 0
     }
+    this.titleRef = React.createRef();
   }
 
   componentDidMount() {
@@ -106,9 +109,7 @@ class Player extends Component<IPlayerProps, IPlayerState> {
         <div className='time'>
           {this.props.progressMs && this.props.item ? `${this.convertSecondsToMinutes(this.props.progressMs / 1000)} / ${this.convertSecondsToMinutes(this.props.item.duration_ms / 1000)}` : '.. / ..'}
         </div>
-        <div className='title'>
-          {this.props.item && this.props.item.name}
-        </div>
+        <Marquee title={this.props.item && this.props.item.name}></Marquee>
         <div className='artist'>
           {this.props.item && this.props.item.artists[0].name}
         </div>
