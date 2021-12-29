@@ -94,7 +94,7 @@ class Player extends Component<IPlayerProps, IPlayerState> {
         <Visualizer 
           currentPosition={this.props.progressMs && this.props.progressMs / 1000} 
           data={this.props.wave} 
-          size={[300,100]}>
+          size={[300,30]}>
         </Visualizer>
         <div className='select-wrapper'>
           <span className='title'>{'Channel:'}</span>
