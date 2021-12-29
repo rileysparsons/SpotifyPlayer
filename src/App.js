@@ -7,7 +7,7 @@ import withSpotifyWebPlayer from './withSpotifyWebPlayer';
 
 const clientId = '5b05b04c1f9d432daf65fcccd9d46559'; // Your client id
 const clientSecret = '4503af0262b645fdac34eccdff17cdde'; // Your secret
-const redirectUri = 'http://localhost:3000/callback'; // Your redirect uri
+const redirectUri = `${document.baseURI}callback`; // Your redirect uri
 const scopes = 'user-read-private user-read-email user-read-playback-state streaming user-top-read';
 const state = '123';
 
