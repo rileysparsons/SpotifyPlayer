@@ -2,6 +2,10 @@ div#title {
   white-space: nowrap;
   overflow: hidden;
 
+  p {
+    margin: 0px 0px 5px 0px;
+  }
+
   p.marquee {
     animation: scroller 6s linear infinite;
   }

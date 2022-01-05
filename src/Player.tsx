@@ -113,7 +113,7 @@ class Player extends Component<IPlayerProps, IPlayerState> {
         <div className='artist'>
           {this.props.item && this.props.item.artists[0].name}
         </div>
-        <div>
+        <div id='controls'>
           <button className='action' disabled={!this.props.item} onClick={this.props.previousTrack}>
           </button>
           <button className='action' disabled={!this.props.item}  onClick={() => this.props.seek(-5)}>
