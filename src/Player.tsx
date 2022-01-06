@@ -1,4 +1,5 @@
 import React, { Component } from 'react';
+import { BsFillPlayFill, BsPauseFill, BsFillSkipBackwardFill, BsFillSkipForwardFill, BsFillSkipEndFill, BsFillSkipStartFill } from 'react-icons/bs';
 import {FullPlaylistObject} from './withSpotifyWebPlayer';
 import {Visualizer} from './Visualizer';
 
@@ -115,14 +116,19 @@ class Player extends Component<IPlayerProps, IPlayerState> {
         </div>
         <div id='controls'>
           <button className='action' disabled={!this.props.item} onClick={this.props.previousTrack}>
+            <BsFillSkipStartFill></BsFillSkipStartFill>
           </button>
           <button className='action' disabled={!this.props.item}  onClick={() => this.props.seek(-5)}>
+            <BsFillSkipBackwardFill></BsFillSkipBackwardFill>
           </button>
           <button className='action' disabled={!this.props.item} onClick={this.togglePlayback}>
+              {this.props.isPlaying ? <BsPauseFill></BsPauseFill> : <BsFillPlayFill></BsFillPlayFill>}
           </button>
           <button className='action' disabled={!this.props.item} onClick={() => this.props.seek(5)}>
+            <BsFillSkipForwardFill></BsFillSkipForwardFill>
           </button>
           <button className='action' disabled={!this.props.item} onClick={this.props.nextTrack}>
+            <BsFillSkipEndFill></BsFillSkipEndFill>
           </button>
         </div>
       </div>
