@@ -1,13 +1,13 @@
 import * as React from 'react';
-import {Component} from 'react';
+import { Component } from 'react';
 import makeAsyncScriptLoader from 'react-async-script';
 import { getPlayerState } from './services/spotify';
 
 declare global {
-    interface Window {
-      onSpotifyWebPlaybackSDKReady: () => void;
-      Spotify: any;
-    }
+  interface Window {
+    onSpotifyWebPlaybackSDKReady: () => void;
+    Spotify: any;
+  }
 }
 
 interface WebPlaybackTrack {
@@ -42,12 +42,12 @@ interface WebPlaybackState {
     seeking?: boolean;           // means that the operation is not permitted. For
     skipping_next?: boolean;    // example, `skipping_next`, `skipping_prev` and
     skipping_prev?: boolean;     // `seeking` will be set to `true` when playing an
-                              // ad track.
+    // ad track.
   },
   paused: boolean;  // Whether the current track is paused.
   position: number;    // The position_ms of the current track.
   repeat_mode: number; // The repeat mode. No repeat mode is 0,
-                  // once-repeat is 1 and full repeat is 2.
+  // once-repeat is 1 and full repeat is 2.
   shuffle: boolean; // True if shuffled, false otherwise.
   track_window: {
     current_track: WebPlaybackTrack;                              // The track currently on local playback
@@ -193,9 +193,9 @@ export default function withSpotifyWebPlayer(WrappedComponent: React.ElementType
       };
 
       this.fetchPlaylistsMetadata(playlists).then((metadatas: any[]) => {
-          this.setState({
-            playlists: metadatas
-          });
+        this.setState({
+          playlists: metadatas
+        });
       });
     }
 
@@ -215,7 +215,7 @@ export default function withSpotifyWebPlayer(WrappedComponent: React.ElementType
       }
 
       if (item == null && this.state.item || (item && item.id != this.state.item.id)) {
-        this.fetchTrackAnalysis(this.state.item.id).then(({segments}: {segments: SegmentObject[]}) => {
+        this.fetchTrackAnalysis(this.state.item.id).then(({ segments }: { segments: SegmentObject[] }) => {
           this.setState({
             loudnessWave: this.getPitchesOverTime(segments)
           })
@@ -225,12 +225,12 @@ export default function withSpotifyWebPlayer(WrappedComponent: React.ElementType
 
     getPitchesOverTime(segments: SegmentObject[]) {
 
-      const resampled: {[key: number]: number} = {};
+      const resampled: { [key: number]: number } = {};
 
-      segments.forEach(({start, duration, loudness_max}) => {
+      segments.forEach(({ start, duration, loudness_max }) => {
         const roundedStart = Math.round(start);
         const roundedEnd = Math.round(start + duration);
-        
+
         for (let i = roundedStart; i < roundedEnd; i++) {
           resampled[i] = loudness_max;
         }
@@ -239,7 +239,7 @@ export default function withSpotifyWebPlayer(WrappedComponent: React.ElementType
       return resampled;
     }
 
-    componentDidMount () {
+    componentDidMount() {
 
       if (this.props.access_token != null && this.props.Spotify) {
         this.initializeSpotify(this.state.access_token);
@@ -284,7 +284,6 @@ export default function withSpotifyWebPlayer(WrappedComponent: React.ElementType
       this.player.addListener('player_state_changed', (state?: WebPlaybackState) => {
 
         if (state) {
-          console.log(JSON.stringify(state, null, 4));
           this.setState({
             item: state.track_window.current_track,
             isPlaying: !state.paused
@@ -296,10 +295,6 @@ export default function withSpotifyWebPlayer(WrappedComponent: React.ElementType
             isPlaying: false
           });
         }
-      });
-
-      this.player.setName("Riley's Spotify Project").then(() => {
-        console.log('Player name updated!');
       });
 
       // Ready
@@ -337,31 +332,31 @@ export default function withSpotifyWebPlayer(WrappedComponent: React.ElementType
       for (let id of ids) {
         await fetch(
           `https://api.spotify.com/v1/playlists/${id}`, {
-            method: 'GET',
-            headers: {
-              'Authorization': `Bearer ${this.props.access_token}`
-            },
-          }
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${this.props.access_token}`
+          },
+        }
         )
-        .then((res) => {
-          return res.json();
-        })
-        .then((metadata: FullPlaylistObject) => {
-          metadatas.push(metadata)
-        });
+          .then((res) => {
+            return res.json();
+          })
+          .then((metadata: FullPlaylistObject) => {
+            metadatas.push(metadata)
+          });
       }
       return metadatas;
     }
 
     fetchTrackAnalysis = (id: string) => {
-        return fetch(
-          `https://api.spotify.com/v1/audio-analysis/${id}`, {
-            method: 'GET',
-            headers: {
-              'Authorization': `Bearer ${this.state.access_token}`
-            },
-          }
-        ).then((res) => {
+      return fetch(
+        `https://api.spotify.com/v1/audio-analysis/${id}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${this.state.access_token}`
+        },
+      }
+      ).then((res) => {
         if (res.ok) {
           return res.json();
         } else {
@@ -444,7 +439,7 @@ export default function withSpotifyWebPlayer(WrappedComponent: React.ElementType
       this.setState({
         progressMs: seekTime
       });
-      
+
       await this.player.seek(seekTime);
       await this.waitForProgress(seekTime, 5, this.seekCanceller);
 
@@ -464,7 +459,7 @@ export default function withSpotifyWebPlayer(WrappedComponent: React.ElementType
               res();
             }
 
-            const {progress_ms} = await getPlayerState(this.props.access_token);
+            const { progress_ms } = await getPlayerState(this.props.access_token);
 
             if (progress_ms >= seekTime) {
               return res(progress_ms);
@@ -474,7 +469,7 @@ export default function withSpotifyWebPlayer(WrappedComponent: React.ElementType
             if (attempts > maxAttempts) {
               rej(new Error('Maximum attempts exceeeded'));
             }
-            
+
             getStateAfter();
           }, PROGRESS_INTERVAL);
         }
@@ -484,42 +479,41 @@ export default function withSpotifyWebPlayer(WrappedComponent: React.ElementType
     }
 
     playContext = (spotify_uri: string) => {
-        const play = ({
-          spotify_uri,
-          playerInstance: {
-            _options: {
-              getOAuthToken,
-              id
-            }
+      const play = ({
+        spotify_uri,
+        playerInstance: {
+          _options: {
+            getOAuthToken,
+            id
           }
-        }: {
-          spotify_uri: string,
-          playerInstance: {
-            _options: {
-              getOAuthToken: any,
-              id: string
-            }
+        }
+      }: {
+        spotify_uri: string,
+        playerInstance: {
+          _options: {
+            getOAuthToken: any,
+            id: string
           }
-        }) => {
-          getOAuthToken((access_token: string) => {
-            this.setState({
-              access_token
-            });
-            fetch(`https://api.spotify.com/v1/me/player/play?device_id=${id}`, {
-              method: 'PUT',
-              body: JSON.stringify({ context_uri: `spotify:playlist:${spotify_uri}` }),
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${access_token}`
-              },
-            });
+        }
+      }) => {
+        getOAuthToken((access_token: string) => {
+          this.setState({
+            access_token
           });
-        };
-        console.log(this.player);
-        play({
-          playerInstance: this.player,
-          spotify_uri
+          fetch(`https://api.spotify.com/v1/me/player/play?device_id=${id}`, {
+            method: 'PUT',
+            body: JSON.stringify({ context_uri: `spotify:playlist:${spotify_uri}` }),
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${access_token}`
+            },
+          });
         });
+      };
+      play({
+        playerInstance: this.player,
+        spotify_uri
+      });
     }
 
     onPlaylistChange = (currentPlaylist: number) => {
@@ -547,5 +541,5 @@ export default function withSpotifyWebPlayer(WrappedComponent: React.ElementType
 
   }
 
-  return makeAsyncScriptLoader('https://sdk.scdn.co/spotify-player.js', {callbackName: 'onSpotifyWebPlaybackSDKReady', globalName: 'Spotify'})(InnerComponent);
+  return makeAsyncScriptLoader('https://sdk.scdn.co/spotify-player.js', { callbackName: 'onSpotifyWebPlaybackSDKReady', globalName: 'Spotify' })(InnerComponent);
 }
