@@ -1,6 +1,7 @@
 import * as React from 'react';
-import {Component, ReactType} from 'react';
+import {Component} from 'react';
 import makeAsyncScriptLoader from 'react-async-script';
+import { getPlayerState } from './services/spotify';
 
 declare global {
     interface Window {
@@ -169,11 +170,16 @@ export interface SegmentObject {
 
 const PROGRESS_INTERVAL = 300;
 
-export default function withSpotifyWebPlayer(WrappedComponent: ReactType, playlists: string[] = []) {
+export default function withSpotifyWebPlayer(WrappedComponent: React.ElementType, playlists: string[] = []) {
   class InnerComponent extends Component<any, any> {
 
     player?: any;
     stopPolling?: () => void;
+    seekCanceller = {
+      cancel: () => {
+        // no-op
+      }
+    }
 
     constructor(props: any) {
       super(props);
@@ -262,7 +268,7 @@ export default function withSpotifyWebPlayer(WrappedComponent: ReactType, playli
     initializeSpotify = (token: string) => {
 
       this.player = new this.props.Spotify.Player({
-        name: 'Web Playback SDK Quick Start Player',
+        name: "Riley's Spotify Project",
         getOAuthToken: (cb: (token: string) => void) => { cb(token); }
       });
 
@@ -278,27 +284,17 @@ export default function withSpotifyWebPlayer(WrappedComponent: ReactType, playli
       this.player.addListener('player_state_changed', (state?: WebPlaybackState) => {
 
         if (state) {
-          console.log('changed', !state.paused);
+          console.log(JSON.stringify(state, null, 4));
           this.setState({
             item: state.track_window.current_track,
             isPlaying: !state.paused
           });
-          if (!state.paused) {
-              this.pollForTrack();
-          } else {
-            if (this.stopPolling) {
-              this.stopPolling();
-            }
-            setTimeout(() => this.getState);
-          }
+          this.pollForTrack();
         } else {
           this.setState({
             item: null,
             isPlaying: false
           });
-          if (this.stopPolling) {
-            this.stopPolling();
-          }
         }
       });
 
@@ -380,36 +376,6 @@ export default function withSpotifyWebPlayer(WrappedComponent: ReactType, playli
       });
     }
 
-    getState = () => {
-      return fetch(
-        `https://api.spotify.com/v1/me/player`, {
-          method: 'GET',
-          headers: {
-            'Authorization': `Bearer ${this.props.access_token}`
-          },
-        }
-      ).then((res: any) => {
-        if (res.ok) {
-          return res.json();
-        } else {
-          throw new Error(res.status);
-        }
-      }).then(data => {
-        this.setState(
-          {
-            item: data.item,
-            isPlaying: data.is_playing,
-            progressMs: data.progress_ms
-          }
-        );
-        return data;
-      }).catch((error) => {
-        if (error.message === 401) {
-          this.props.onAuthError();
-        }
-      })
-    }
-
     play = () => {
       this.player.resume();
     }
@@ -426,13 +392,31 @@ export default function withSpotifyWebPlayer(WrappedComponent: ReactType, playli
         this.stopPolling();
       }
       const poll = () => {
-        if (shouldContinue) {
-          timeout = setTimeout(() => {
-            this.getState().then(() => {
-              poll();
-            });
-          }, PROGRESS_INTERVAL);
-        }
+        timeout = setTimeout(() => {
+          if (!shouldContinue) {
+            return;
+          }
+          getPlayerState(this.props.access_token).then(data => {
+            if (!shouldContinue) {
+              return;
+            }
+
+            this.setState(
+              {
+                item: data.item,
+                isPlaying: data.is_playing,
+                progressMs: data.progress_ms
+              }
+            );
+            return data;
+          }).catch((error) => {
+            if (error.message === 401) {
+              this.props.onAuthError();
+            }
+          }).then(() => {
+            poll();
+          });
+        }, PROGRESS_INTERVAL);
       }
       poll();
 
@@ -450,10 +434,53 @@ export default function withSpotifyWebPlayer(WrappedComponent: ReactType, playli
       return this.player.nextTrack();
     }
 
-    seek = (time: number) => {
+    seek = async (time: number) => {
+      // "cancelling any previous requests"
+      this.seekCanceller.cancel();
+
+      // Temporarily stop polling to prevent updates
+      this.stopPolling && this.stopPolling();
       const seekTime = Math.min(Math.max(0, this.state.progressMs + (time * 1000)), this.state.item.duration_ms);
-      console.log('seek', seekTime);
-      return this.player.seek(seekTime);
+      this.setState({
+        progressMs: seekTime
+      });
+      
+      await this.player.seek(seekTime);
+      await this.waitForProgress(seekTime, 5, this.seekCanceller);
+
+      this.pollForTrack();
+    }
+
+    waitForProgress = (seekTime: number, maxAttempts = 5, canceller: any) => {
+      let attempts = 0;
+      let cancelled = false;
+      canceller.cancel = () => {
+        cancelled = true;
+      }
+      return new Promise<void | number>((res, rej) => {
+        const getStateAfter = () => {
+          setTimeout(async () => {
+            if (cancelled) {
+              res();
+            }
+
+            const {progress_ms} = await getPlayerState(this.props.access_token);
+
+            if (progress_ms >= seekTime) {
+              return res(progress_ms);
+            }
+
+            attempts++;
+            if (attempts > maxAttempts) {
+              rej(new Error('Maximum attempts exceeeded'));
+            }
+            
+            getStateAfter();
+          }, PROGRESS_INTERVAL);
+        }
+        getStateAfter();
+      });
+
     }
 
     playContext = (spotify_uri: string) => {
