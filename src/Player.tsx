@@ -5,6 +5,7 @@ import {Visualizer} from './Visualizer';
 
 import './Player.scss'
 import { Marquee } from './Marquee';
+import { convertSecondsToMinutes } from './utils';
 
 interface IPlayerProps {
   item?: any;
@@ -79,16 +80,6 @@ class Player extends Component<IPlayerProps, IPlayerState> {
     }
   }
 
-  convertSecondsToMinutes = (seconds: number) => {
-
-    const pad = (n: number, width: number, z = '0') => {
-      const _n =  n + '';
-      return _n.length >= width ? _n : new Array(width - _n.length + 1).join(z) + n;
-    }
-
-    return `${pad(Math.round(seconds / 60), 2)}:${pad(Math.round(seconds) % 60, 2)}`
-  }
-
   render () {
     return (
       <div className='player container'>
@@ -108,7 +99,7 @@ class Player extends Component<IPlayerProps, IPlayerState> {
           </select>
         </div>
         <div className='time'>
-          {this.props.progressMs && this.props.item ? `${this.convertSecondsToMinutes(this.props.progressMs / 1000)} / ${this.convertSecondsToMinutes(this.props.item.duration_ms / 1000)}` : '.. / ..'}
+          {this.props.progressMs && this.props.item ? `${convertSecondsToMinutes(this.props.progressMs / 1000)} / ${convertSecondsToMinutes(this.props.item.duration_ms / 1000)}` : '.. / ..'}
         </div>
         <Marquee title={this.props.item && this.props.item.name}></Marquee>
         <div className='artist'>
